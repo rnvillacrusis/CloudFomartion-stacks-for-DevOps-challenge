@@ -1,0 +1,20 @@
+Description: SSL certificate for Tier1 challenge
+Parameters:
+  DomainName:
+    Default: rvillacrusis-tier1.apperdevops.com
+    Description: Domain for tier 1 - Elastic Beanstalk
+    Type: String
+Resources:
+  RVillacrusisCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+Outputs:
+  Cert:
+    Description: SSL Certificate
+    Value:
+      Ref: RVillacrusisCertificate
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-Cert

@@ -1,0 +1,427 @@
+Description:  rvillacrusis VPC Template + RDS MySQL DB (5.7.31) Instance
+Parameters:
+  LatestAmiId:
+    Description: RDS Instance
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  DBName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    Default: 'rnvrds'
+    Description: database name
+    MaxLength: '64'
+    MinLength: '1'
+    Type: String
+  DBPassword:
+    ConstraintDescription: must contain only alphanumeric characters.
+    Description: database admin account password
+    MaxLength: '41'
+    MinLength: '8'
+    Type: String
+    Default: 'villacrusis0210'
+  DBRootPassword:
+    ConstraintDescription: must contain only alphanumeric characters.
+    Description: MySQL root password
+    MaxLength: '41'
+    MinLength: '8'
+    Type: String
+    Default: 'villacrusis0210'
+  DBUser:
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+    Description: database admin account username
+    Default: 'rnvrds'
+    MaxLength: '16'
+    MinLength: '1'
+    Type: String
+  MultiAZ:
+    Description: Multi AZ
+    Type: "String"
+    Default: "True"
+    AllowedValues:
+      - "True"
+      - "False"
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.16.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-vpc
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+      - Key: Name
+        Value: rvillacrusis-vpc-igw
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  RouteTableWeb: 
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: rvillacrusis-vpc-rt-web
+  RouteTableWebDefaultIPv4: 
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: RouteTableWeb
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId:
+        Ref: InternetGateway
+  RouteTableAssociationWebA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetWEBA
+      RouteTableId:
+        Ref: RouteTableWeb
+  RouteTableAssociationWebB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetWEBB
+      RouteTableId:
+        Ref: RouteTableWeb
+  RouteTableAssociationWebC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetWEBC
+      RouteTableId:
+        Ref: RouteTableWeb
+  SubnetDBA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.16.32.0/20
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-db-A
+  SubnetDBB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.16.80.0/20
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-db-B
+  SubnetDBC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.16.128.0/20
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-db-C
+  SubnetAPPA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.16.16.0/20
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-app-A
+  SubnetAPPB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.16.64.0/20
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-app-B
+  SubnetAPPC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.16.112.0/20
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-app-C
+  SubnetWEBA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.16.0.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-web-A
+  SubnetWEBB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.16.48.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-web-B
+  SubnetWEBC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.16.176.0/20
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: rvillacrusis-web-C
+  EIPA:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  EIPB:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  EIPC:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  NatGatewayA:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt EIPA.AllocationId
+      SubnetId: !Ref SubnetWEBA
+  NatGatewayB:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt EIPB.AllocationId
+      SubnetId: !Ref SubnetWEBB
+  NatGatewayC:
+    Type: 'AWS::EC2::NatGateway'
+    Properties:
+      AllocationId: !GetAtt EIPC.AllocationId
+      SubnetId: !Ref SubnetWEBC
+  RouteTablePrivateA: 
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: rvillacrusis-vpc-rt-privateA
+  RouteTablePrivateB: 
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: rvillacrusis-vpc-rt-privateB
+  RouteTablePrivateC: 
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: rvillacrusis-vpc-rt-privateC
+  RouteNatGWA: 
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateA
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGatewayA
+  RouteNatGWB: 
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateB
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGatewayB
+  RouteNatGWC: 
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateC
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NatGatewayC
+  RouteTableAssociationAppA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPPA
+      RouteTableId: !Ref RouteTablePrivateA
+  RouteTableAssociationDBA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetDBA
+      RouteTableId: !Ref RouteTablePrivateA
+  RouteTableAssociationAppB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPPB
+      RouteTableId: !Ref RouteTablePrivateB
+  RouteTableAssociationDBB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetDBB
+      RouteTableId: !Ref RouteTablePrivateB
+  RouteTableAssociationAppC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPPC
+      RouteTableId: !Ref RouteTablePrivateC
+  RouteTableAssociationDBC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetDBC
+      RouteTableId: !Ref RouteTablePrivateC
+  DefaultInstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Enable SSH access via port 22 IPv4
+      SecurityGroupIngress: 
+        - Description: 'Allow SSH IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: '0.0.0.0/0'
+        - Description: 'Allow HTTP IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: '0.0.0.0/0'
+  DefaultInstanceSecurityGroupSelfReferenceRule:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId: !Ref DefaultInstanceSecurityGroup
+      IpProtocol: 'tcp'
+      FromPort: '0'
+      ToPort: '65535'
+      SourceSecurityGroupId: !Ref DefaultInstanceSecurityGroup
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: "Ingress control for RDS instance"
+      SecurityGroupIngress: 
+        - Description: 'Allow MySQL IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref InstanceSecurityGroup
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: rnv rds subnet group
+      SubnetIds: 
+        - !Ref SubnetDBA
+        - !Ref SubnetDBB
+  DB:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    Properties:
+      AllocatedStorage: "20"
+      DBInstanceClass: "db.t2.micro"
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      DBName: !Ref DBName
+      Engine: MySQL
+      EngineVersion: "5.7.31"
+      MasterUserPassword: !Ref DBPassword
+      MasterUsername: !Ref DBUser
+      MultiAZ: !Ref MultiAZ
+      StorageType: gp2
+      Tags: 
+        - 
+          Key: Name
+          Value: "RNV-RDS-DB"
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup 
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Enable SSH access via port 22 IPv4 & v6
+      SecurityGroupIngress:
+        - Description: 'Allow SSH IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: '0.0.0.0/0'
+        - Description: 'Allow HTTP IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: '0.0.0.0/0'
+        - Description: 'Allow SSH IPv6 IN'
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIpv6: ::/0
+  InstanceSecurityGroupSelfReferenceRule:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: 'tcp'
+      FromPort: '0'
+      ToPort: '65535'
+      SourceSecurityGroupId: !Ref InstanceSecurityGroup              
+Outputs:
+  dbhost:
+    Description: "RDS Endpoint Address"
+    Value: !GetAtt DB.Endpoint.Address
+  rvvpc:
+    Description: rv VPC_ID
+    Value: !Ref VPC
+    Export: 
+      Name: rv-vpc
+  rvvpcsubnetweba:
+    Description: rv VPC SubnetWEBA
+    Value: !Ref SubnetWEBA
+    Export:
+      Name: rv-vpc-subnet-weba
+  rvvpcsubnetwebb:
+    Description: rv VPC SubnetWEBB
+    Value: !Ref SubnetWEBB
+    Export:
+      Name: rv-vpc-subnet-webb
+  rvvpcsubnetwebc:
+    Description: rv VPC SubnetWEBC
+    Value: !Ref SubnetWEBC
+    Export:
+      Name: rv-vpc-subnet-webc
+  rvvpcsubnetappa:
+    Description: rv VPC SubnetAPPA
+    Value: !Ref SubnetAPPA
+    Export:
+      Name: rv-vpc-subnet-appa
+  rvvpcsubnetappb:
+    Description: rv VPC SubnetAPPB
+    Value: !Ref SubnetAPPB
+    Export:
+      Name: rv-vpc-subnet-appb
+  rvvpcsubnetappc:
+    Description: rv VPC SubnetAPPC
+    Value: !Ref SubnetAPPC
+    Export:
+      Name: rv-vpc-subnet-appc
+  rvvpcsubnetdba:
+    Description: rv VPC SubnetDBA
+    Value: !Ref SubnetDBA
+    Export:
+      Name: rv-vpc-subnet-dba
+  rvvpcsubnetdbb:
+    Description: rv VPC SubnetDBB
+    Value: !Ref SubnetDBB
+    Export:
+      Name: rv-vpc-subnet-dbb
+  rvvpcsubnetdbc:
+    Description: rv VPC SubnetDBC
+    Value: !Ref SubnetDBC
+    Export:
+      Name: rv-vpc-subnet-dbc
+  rvvpcdefaultinstancesg:
+    Description: rv VPC Default Instance SecurityGroup
+    Value: !Ref DefaultInstanceSecurityGroup
+    Export:
+      Name: rv-vpc-default-instance-sg
