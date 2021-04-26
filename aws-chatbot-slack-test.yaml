@@ -1,0 +1,22 @@
+Resources:
+  ChatbotSlack:
+    Type: AWS::Chatbot::SlackChannelConfiguration
+    Properties: 
+      ConfigurationName: aws-chatbot-with-slack
+      IamRoleArn: arn:aws:iam::631472233159:role/chatbot-role-renzo-test
+      SlackChannelId: C01UQG8Q6HK
+      SlackWorkspaceId: T01U0445MGV
+      SnsTopicArns: 
+        - arn:aws:sns:ap-southeast-1:631472233159:aws-chatbot-to-slack
+
+  IAMRoleChatbot:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'lambda:invokeAsync'
+              - 'lambda:invokeFunction'
+            Resource: '*'
